@@ -1,6 +1,6 @@
 # PyVRC
 
-PyVRC allows to fit a Variable Rate Coding model to data in Python.
+PyVRC allows to fit a Variable Rate Coding model in Python.
 
 
 ## Usage
