@@ -6,4 +6,6 @@ seaborn
 pytest
 pytest-plt
 ndjson
+torch
+torchvision
 ax-platform
