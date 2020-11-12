@@ -98,7 +98,7 @@ class BayesPoissonModel():
     return best_params
 
   def scipy_fit(self, response_times, stimuli):
-    """Use Scipy to fit a ML model.
+    """[DO NOT USE] Use Scipy to fit a ML model.
 
     Args:
     response_times (list):

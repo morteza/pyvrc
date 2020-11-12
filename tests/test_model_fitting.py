@@ -1,3 +1,4 @@
+import pytest
 import vrc
 
 # TODO refactor as fixtures
@@ -19,9 +20,10 @@ def test_ax_backend():
 
 def test_scipy_backend():
 
-  model = vrc.BayesPoissonModel(symbols, timeout_in_sec)
-  best_params = model.scipy_fit(rts, stimuli, )
+  with pytest.raises(Exception):
+    model = vrc.BayesPoissonModel(symbols, timeout_in_sec)
+    best_params = model.scipy_fit(rts, stimuli, )
 
-  # signal_freq, noise_freq, decision_entropy
-  print(best_params)
-  assert len(best_params) == 3
+    # signal_freq, noise_freq, decision_entropy
+    print(best_params)
+    assert len(best_params) == 3

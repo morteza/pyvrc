@@ -15,7 +15,7 @@ def test_noisy_decoding(symbols, message, noiseless_params, plt):
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
   spike_trains = encode(message, timeout_in_sec)
 
-  decode = vrc.SNRDecoder(symbols, snr)
+  decode = vrc.SNRDecoder(symbols, snr, noise_freq=noise_freq)
 
   posteriors = decode(spike_trains, timeout_in_sec)
 

@@ -23,7 +23,7 @@ setup(name='pyvrc',
           "Trello Board": ""
       },
       package_dir={'': 'python'},
-      packages=find_packages(where="python"),
+      packages=find_packages(where='python'),
       python_requires='>=3.7',
       install_requires=REQUIRED_PACKAGES,
       )
