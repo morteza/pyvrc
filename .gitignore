@@ -154,3 +154,7 @@ nilearn_cache/
 
 # temp
 tmp/
+
+
+# temp for local gitlab-runner
+builds/

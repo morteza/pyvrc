@@ -1,6 +1,6 @@
 # run flake8 styleguide tests
 check_style:
-  image: python:latest
+  image: python:3.8
   stage: test
   before_script:
   - python3 -V
