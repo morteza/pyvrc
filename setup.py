@@ -24,6 +24,6 @@ setup(name='pyvrc',
       },
       package_dir={'': 'python'},
       packages=find_packages(where='python'),
-      python_requires='>=3.7',
+      python_requires='>=3.6',
       install_requires=REQUIRED_PACKAGES,
       )
