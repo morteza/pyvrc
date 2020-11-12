@@ -98,7 +98,10 @@ class BayesPoissonModel():
     return best_params
 
   def scipy_fit(self, response_times, stimuli):
-    """[DO NOT USE] Use Scipy to fit a ML model.
+    """[DEPRECATED] Use Scipy to fit a MLE.
+
+    deprecated:
+      Scipy optimizer is deprecated. Use Pytorch-based `fit()` instead.
 
     Args:
     response_times (list):
