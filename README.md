@@ -5,7 +5,6 @@ PyVRC is a Python package to fit Variable Rate Coding models to behavioral data.
 
 ## Usage
 
-## Usage
 
 First, you need to install `pyvrc` package using pip3:
 
