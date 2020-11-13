@@ -32,12 +32,12 @@ class BayesPoissonModel():
   timeout_in_sec: float
   simulations_count: int = 100
   inference_freq: float = 100
-  backend: str = 'scipy'  # or 'ax'
-
-  def __post_init__(self):
-    self.max_signal_freq = 100.0
-    self.max_noise_freq = 99.0
-    self.initial_entropy = 2.0   # TODO more intelligent bound for entrpy
+  min_signal_freq = 1.0
+  min_noise_freq = 0.1
+  max_signal_freq = 100.0
+  max_noise_freq = 99.0
+  initial_entropy = 2.0  # TODO use a more intelligent bound for entrpy
+  backend: str = 'ax'  # or 'scipy' (DEPRECATED)
 
   def fit(self, response_times, stimuli):
     """Use Scipy to fit a ML model.
@@ -63,16 +63,16 @@ class BayesPoissonModel():
         "name": "signal_freq",
         "type": "range",
         # "value_type": "int",  # to speed up optimization
-        "bounds": [0.0, 1000.0]
+        "bounds": [self.min_signal_freq, self.max_signal_freq]
     }, {
         "name": "noise_freq",
         "type": "range",
         # "value_type": "int",  # to speed up optimization
-        "bounds": [0.1, 1000.0]
+        "bounds": [self.min_noise_freq, self.max_noise_freq]
     }, {
         "name": "decision_entropy",
         "type": "range",
-        "bounds": [0.1, 1.0]
+        "bounds": [0.1, self.initial_entropy]
     }]
 
     def neg_log_likelihood(p):
