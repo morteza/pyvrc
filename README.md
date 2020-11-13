@@ -10,7 +10,7 @@ First, make sure you have Python installed (3.6 and newer) and then use pip to i
 
 
 ```python
-pip3 install pyvrc -U --index-url=https://__token__:<your_personal_token>@gitlab.uni.lu/api/v4/projects/2030/packages/pypi/simple
+pip3 install pyvrc -U --extra-index-url https://__token__:<your_personal_token>@gitlab.uni.lu/api/v4/projects/2030/packages/pypi/simple
 ```
 
 See [FAQ](#faq) section below for more information about personal access tokens.
