@@ -44,7 +44,7 @@ class SNRDecoder(object):
 
     """
     # convert dict to numpy array and then count spikes
-    spike_trains_mat = np.array(list(spike_trains.values()))
+    spike_trains_mat = np.array(list(spike_trains.values()), dtype='object')
     spike_counts = count_spikes(spike_trains_mat,
                                 duration=timeout_in_sec,
                                 counting_freq=self.inference_freq)
