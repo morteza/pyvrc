@@ -27,18 +27,17 @@ def test_noiseless_encoding(symbols, message, noiseless_params):
   assert all([len(s) == 0 for s in spike_trains.values()])
 
 
-def test_spike_train_plotting(symbols, message, noiseless_params, plt):
+def test_spike_train_plotting(symbols, message, noisy_params, plt):
 
-  signal_freq = noiseless_params['signal_freq']
-  noise_freq = noiseless_params['noise_freq']
+  signal_freq = noisy_params['signal_freq']
+  noise_freq = noisy_params['noise_freq']
+  timeout_in_sec = noisy_params['timeout_in_sec']
 
   # init encoder
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
 
   # generate signal spikes
-  spike_trains = encode(message,
-                        noiseless_params['timeout_in_sec'])
+  spike_trains = encode(message, timeout_in_sec)
 
-  plt.eventplot(spike_trains[message], color="green")
-
+  plt.eventplot(spike_trains.values(), color="green")
   plt.suptitle('Spike train for the message symbol.', y=0)
