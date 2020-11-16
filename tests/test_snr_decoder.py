@@ -36,7 +36,6 @@ def test_noisy_decoding(symbols, message, params_fixture, plt, request):
   fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
   # plot posteriors
-  sns.set()
   sns.lineplot(data=posteriors.T, marker='o', ax=axes[0])
   axes[0].set_xlabel('Time (s)')
   axes[0].set_ylabel('Posterior (p)')
@@ -71,7 +70,6 @@ def test_snr_decoding_logic(plt):
   entropies = - np.sum(posteriors * np.log2(posteriors), axis=0)
 
   # plot posteriors
-  sns.set()
   sns.lineplot(data=entropies.T, marker='o')
   plt.xlabel('Time (timepoint)')
   plt.ylabel('Entropy (bits)')

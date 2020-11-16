@@ -94,9 +94,8 @@ def test_entropy_trace(symbols, plt: pyplot):
 
   fig, ax = plt.subplots(1, 1)
 
-  sns.set()
-  xx = np.linspace(0, timeout_in_sec, entropies.shape[0])
-  sns.lineplot(x=xx,
+  xs = np.linspace(0, timeout_in_sec, entropies.shape[0])
+  sns.lineplot(x=xs,
                y=entropies,
                drawstyle='steps-post',
                ax=ax)

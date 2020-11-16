@@ -30,7 +30,6 @@ def test_decoding(symbols, message, params_fixture, plt, request):
   fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
   # plot posteriors
-  sns.set()
   sns.lineplot(data=posteriors.T, marker='o', ax=axes[0])
   axes[0].set_xlabel('Time (timepoint)')
   axes[0].set_ylabel('Posterior (p)')
@@ -81,7 +80,6 @@ def test_decoding_logic(plt):
   assert np.max(priors[:, -1]) == priors[2, -1]
 
   # plot posteriors
-  sns.set()
   sns.lineplot(data=priors.T, marker='o')
   plt.xlabel('Time (timepoint)')
   plt.ylabel('Posterior (p)')
