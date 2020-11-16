@@ -9,3 +9,4 @@ ndjson
 torch
 torchvision
 ax-platform
+scikit-learn
