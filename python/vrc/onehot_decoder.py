@@ -5,7 +5,7 @@ import numpy as np
 import scipy
 import scipy.stats as stats
 
-from .utils.count_spikes import count_spikes
+from vrc.utils import count_spikes
 
 
 @dataclass
@@ -51,8 +51,7 @@ class OneHotDecoder(object):
     """
 
     # convert dict to numpy array and then count spikes
-    spike_trains_mat = np.array(list(spike_trains.values()))
-    spike_counts = count_spikes(spike_trains_mat,
+    spike_counts = count_spikes(spike_trains.values(),
                                 duration=timeout_in_sec,
                                 counting_freq=self.inference_freq)
 

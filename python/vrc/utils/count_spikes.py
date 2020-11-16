@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 
-def count_spikes(spike_trains: np.array,
+def count_spikes(spike_trains: list,
                  duration: float,
                  counting_freq: float,
                  compress=False) -> np.array:
@@ -21,7 +21,7 @@ def count_spikes(spike_trains: np.array,
 
   assert compress is False, "Compressed spike counting is not implemented."
 
-  channels_cnt = spike_trains.shape[0]
+  channels_cnt = len(spike_trains)
 
   spike_counts = np.zeros((channels_cnt, duration * counting_freq + 1))
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .utils import count_spikes
+from vrc.utils import count_spikes
 
 
 @dataclass
@@ -43,9 +43,8 @@ class SNRDecoder(object):
       None or array of `channels` priors
 
     """
-    # convert dict to numpy array and then count spikes
-    spike_trains_mat = np.array(list(spike_trains.values()), dtype='object')
-    spike_counts = count_spikes(spike_trains_mat,
+    # count spikes
+    spike_counts = count_spikes(spike_trains.values(),
                                 duration=timeout_in_sec,
                                 counting_freq=self.inference_freq)
 
