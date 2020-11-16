@@ -5,7 +5,6 @@ import numpy as np
 import vrc
 
 import seaborn as sns
-sns.set()
 
 
 def test_non_identifiable_params(plt):
@@ -30,7 +29,8 @@ def test_non_identifiable_params(plt):
                                decision_entropies[i],
                                timeout_in_sec)
     vtransmit = np.vectorize(transmit)
-    accuracies, rts = vtransmit(sent_msgs)
+    pred_msgs, rts = vtransmit(sent_msgs)
+    accuracies = (pred_msgs == sent_msgs)
     sns.distplot(rts, axlabel="RT (s)")
     print(np.nan_to_num(accuracies).mean())
 
@@ -62,7 +62,8 @@ def test_params_recovery(symbols, plt):
   sent_msgs = random.choices(symbols, k=100)
 
   vtransmit = np.vectorize(transmit)
-  accuracies, rts = vtransmit(sent_msgs)
+  pred_msgs, rts = vtransmit(sent_msgs)
+  accuracies = (pred_msgs == sent_msgs)
 
   print('Accuracy:',
         accuracies.mean(),
@@ -89,7 +90,8 @@ def test_params_recovery(symbols, plt):
                              decoder_type='snr')
 
   vtransmit = np.vectorize(transmit)
-  recovered_accuracies, recovered_rts = vtransmit(sent_msgs)
+  pred_msgs, recovered_rts = vtransmit(sent_msgs)
+  recovered_accuracies = (pred_msgs == sent_msgs)
 
   # plot ground truth RTs vs recovered RTs
   sns.distplot(rts, axlabel='Ground Truth')

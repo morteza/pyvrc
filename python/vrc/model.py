@@ -163,10 +163,11 @@ class BayesPoissonModel():
 
     # generate a random sequence of messages and record transmission times
     msgs = random.choices(self.symbols, k=self.simulations_count)
-    accuracies, transmission_times = np.vectorize(transmit)(msgs)
+    pred_msgs, transmission_times = np.vectorize(transmit)(msgs)
+    accuracies = (pred_msgs == msgs)
 
     # keep only valid transmissions
-    transmission_times = transmission_times[accuracies == 1.0]
+    transmission_times = transmission_times[accuracies]
 
     if transmission_times.shape[0] == 0:
       # all simulations are failed

@@ -9,7 +9,6 @@ import vrc
 
 
 def test_noisy_transmission(symbols, message, noiseless_params):
-  np.set_printoptions(precision=3)  # DEBUG
 
   noise_freq = noiseless_params['signal_freq'] / 2
 
@@ -20,10 +19,10 @@ def test_noisy_transmission(symbols, message, noiseless_params):
                              noiseless_params['decision_entropy'],
                              noiseless_params['timeout_in_sec'])
 
-  accuracy, _ = transmit(message)
+  pred_message, _ = transmit(message)
 
   # for reasonable signal/noise freqs, the message must be successfully passed.
-  assert accuracy == 1.0
+  assert pred_message is message
 
 
 def test_entropy_trace(symbols, plt: pyplot):

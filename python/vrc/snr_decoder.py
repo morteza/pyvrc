@@ -36,9 +36,9 @@ class SNRDecoder(object):
     spike_trains (dict):
       overall shape must be (channels * times), and keys represent symbols.
     timeout_in_sec (float):
-      inference timeout in seconds. None accuracy and timeout_in_sec response
-      time will be generated if entropy does no reach the threshold up to this
-      timeout time.
+      inference timeout in seconds. Decoded message and response time will
+      be both set to None if entropy does no reach the threshold up to this
+      point in time.
     initial_priors (np.array, optional):
       None or array of `channels` priors
 

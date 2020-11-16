@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from typing import Union
 import numpy as np
 
-from vrc import OneHotDecoder, OneHotEncoder, SNRDecoder
+import vrc
 
 
 @dataclass
@@ -43,13 +44,9 @@ class Transmitter():
 
   Example:
   --------
-    >>> transmit = Transmitter(symbols = ['A','B'], 10, 2, 1)
-    >>> decoded_message, transmission_time, trace = transmit('A')
+    >>> transmit = Transmitter(symbols = list('ABCD'), 10, 2, 10, .5, 10)
+    >>> decoded_message, transmission_time = transmit('A')
 
-  Returns:
-  --------
-    A tuple containing accuracy and transmission time in that order.
-    The type of the output is as follows: (float, float).
 
   """
   symbols: list
@@ -58,27 +55,35 @@ class Transmitter():
   inference_freq: float
   entropy_threshold_bits: float
   timeout_in_sec: float
-  decoder_type: str = 'snr'
+  decoder_type: 'vrc.DecoderType' = 'snr'
+
+  # see `vrc.DecoderType` for valid values.
 
   def __post_init__(self) -> None:
-    self.encode = OneHotEncoder(self.symbols,
-                                self.signal_freq,
-                                self.noise_freq)
 
-    if self.decoder_type == 'snr':
+    self.encode = vrc.OneHotEncoder(self.symbols,
+                                    self.signal_freq,
+                                    self.noise_freq)
+
+    if self.decoder_type is vrc.DecoderType.SNR:
       assert self.noise_freq > 0, 'SNR decoder requires noise_freq>0'
       snr = (self.signal_freq + self.noise_freq) / self.noise_freq
-      self.decode = SNRDecoder(self.symbols,
-                               snr,
-                               self.inference_freq)
+      self.decode = vrc.SNRDecoder(self.symbols,
+                                   snr,
+                                   self.inference_freq)
     else:
-      self.decode = OneHotDecoder(self.symbols,
-                                  self.signal_freq,
-                                  self.noise_freq,
-                                  self.inference_freq)
+      self.decode = vrc.OneHotDecoder(self.symbols,
+                                      self.signal_freq,
+                                      self.noise_freq,
+                                      self.inference_freq)
 
   def __call__(self, message):
     """Encodes a message, transmits it through multiple noisy channels, and decodes it.
+
+    Returns:
+    --------
+      A tuple of predicted message and transmission time in that order.
+      The type of the output is as follows: (char, float).
 
     """
 
@@ -92,19 +97,18 @@ class Transmitter():
     decision_index = np.argmax(entropies < self.entropy_threshold_bits)
 
     if decision_index > 0:
-      recvd_msg_index = np.argmax(
+      pred_msg_index = np.argmax(
           posteriors[:, decision_index]
       ).astype(int)
-      recvd_msg = self.symbols[recvd_msg_index]
-      accuracy = float(recvd_msg == message)
+      pred_msg = self.symbols[pred_msg_index]
       # TODO: use timestamps instead of the following
       stop_time = decision_index / self.inference_freq
     else:
       # decision was inconclusive
-      accuracy = None
-      stop_time = self.timeout_in_sec
+      pred_msg = None
+      stop_time = None
 
-    return accuracy, stop_time
+    return pred_msg, stop_time
 
   def add_noise(self):
     raise NotImplementedError('Use `noise_freq` parameter instead.')
