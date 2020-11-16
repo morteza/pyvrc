@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 
 import seaborn as sns
@@ -5,12 +6,20 @@ import seaborn as sns
 import vrc
 
 
-def test_noisy_decoding(symbols, message, noiseless_params, plt):
+@pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
+def test_noisy_decoding(symbols, message, params_fixture, plt, request):
 
-  signal_freq = noiseless_params['signal_freq']
-  timeout_in_sec = noiseless_params['timeout_in_sec']
-  snr = 2.
-  noise_freq = signal_freq / (snr - 1)
+  params = request.getfixturevalue(params_fixture)
+
+  signal_freq = params['signal_freq']
+  noise_freq = params['noise_freq']
+  timeout_in_sec = params['timeout_in_sec']
+
+  # to avoid division-by-zero in SNR
+  if params['noise_freq'] == 0:
+    noise_freq = signal_freq / 2.0
+
+  snr = signal_freq / noise_freq
 
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
   spike_trains = encode(message, timeout_in_sec)

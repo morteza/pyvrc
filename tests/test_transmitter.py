@@ -1,4 +1,6 @@
 # %%
+import pytest
+
 import random
 
 import numpy as np
@@ -8,22 +10,45 @@ import matplotlib.pyplot as pyplot
 import vrc
 
 
-def test_noisy_transmission(symbols, message, noiseless_params):
+@pytest.mark.parametrize('params_fixture', ['noisy_params'])
+def test_noisy_transmission(symbols, message, params_fixture, request):
 
-  noise_freq = noiseless_params['signal_freq'] / 2
+  params = request.getfixturevalue(params_fixture)
 
   transmit = vrc.Transmitter(symbols,
-                             noiseless_params['signal_freq'],
-                             noise_freq,
-                             noiseless_params['inference_freq'],
-                             noiseless_params['decision_entropy'],
-                             noiseless_params['timeout_in_sec'])
+                             params['signal_freq'],
+                             params['noise_freq'],
+                             params['inference_freq'],
+                             params['decision_entropy'],
+                             params['timeout_in_sec'])
 
   pred_message, _ = transmit(message)
 
   # for reasonable signal/noise freqs, the message must be successfully passed.
   assert pred_message is message
 
+
+@pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
+def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
+
+  params = request.getfixturevalue(params_fixture)
+
+  true_msgs = random.choices(symbols, k=1000)
+
+  noise_freq = params['noise_freq']
+
+  if noise_freq == 0:
+    # to avoid division-by-zero in SNR
+    noise_freq = params['signal_freq'] / 2
+
+  transmit = vrc.Transmitter(symbols,
+                             params['signal_freq'],
+                             noise_freq,
+                             params['inference_freq'],
+                             params['decision_entropy'],
+                             params['timeout_in_sec'])
+
+  assert True
 
 def test_entropy_trace(symbols, plt: pyplot):
 

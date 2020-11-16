@@ -1,5 +1,6 @@
-import numpy as np
+import pytest
 
+import numpy as np
 import scipy
 import scipy.stats as stats
 
@@ -7,11 +8,13 @@ import seaborn as sns
 
 import vrc
 
+@pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
+def test_decoding(symbols, message, params_fixture, plt, request):
 
-def test_noiseless_decoding(symbols, message, noiseless_params, plt):
+  params = request.getfixturevalue(params_fixture)
 
-  signal_freq = noiseless_params['signal_freq']
-  timeout_in_sec = noiseless_params['timeout_in_sec']
+  signal_freq = params['signal_freq']
+  timeout_in_sec = params['timeout_in_sec']
 
   encode = vrc.OneHotEncoder(symbols, signal_freq=signal_freq, noise_freq=0)
   spike_trains = encode(message, timeout_in_sec)

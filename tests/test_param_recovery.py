@@ -74,9 +74,9 @@ def test_params_recovery(symbols, plt):
   # 2. now fit a model to the generated RTs
   model = vrc.BayesPoissonModel(symbols,
                                 timeout_in_sec,
-                                simulations_count=1000,
                                 inference_freq=100,
-                                backend='ax')
+                                backend='ax',
+                                ax_total_trials=5)
 
   best_params = model.fit(rts, sent_msgs)
   print('BEST MODEL PARAMS :', best_params)
