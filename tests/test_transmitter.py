@@ -57,7 +57,7 @@ def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
 
   pred_msgs, rts = np.vectorize(transmit)(true_msgs)
 
-  pred_msgs = ['time out' if x is None else x for x in pred_msgs]
+  pred_msgs = ['' if x is None else x for x in pred_msgs]
 
   n_classes = np.unique(pred_msgs).shape[0]
   cm = confusion_matrix(true_msgs, pred_msgs)
