@@ -65,7 +65,7 @@ class Transmitter():
                                     self.signal_freq,
                                     self.noise_freq)
 
-    if self.decoder_type is vrc.DecoderType.SNR.value:
+    if self.decoder_type == vrc.DecoderType.SNR.value:
       assert self.noise_freq > 0, 'SNR decoder requires noise_freq>0'
       snr = (self.signal_freq + self.noise_freq) / self.noise_freq
       self.decode = vrc.SNRDecoder(self.symbols,

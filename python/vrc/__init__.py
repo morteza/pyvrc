@@ -3,12 +3,13 @@ from .snr_decoder import SNRDecoder
 from .onehot_encoder import OneHotEncoder
 from .transmitter import Transmitter
 from .model import BayesPoissonModel
-from .enums import DecoderType
+from .enums import DecoderType, OptimizerBackend
 
 __all__ = ['OneHotDecoder',
            'SNRDecoder',
            'OneHotEncoder',
            'Transmitter',
            'BayesPoissonModel',
-           'DecoderType'
+           'DecoderType',
+           'OptimizerBackend'
            ]
