@@ -7,6 +7,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as pyplot
 
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
 import vrc
 
 
@@ -33,6 +35,10 @@ def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
 
   params = request.getfixturevalue(params_fixture)
 
+  decoder_type = (vrc.DecoderType.ONE_HOT
+                  if params_fixture == 'noiseless_params'
+                  else vrc.DecoderType.SNR)
+
   true_msgs = random.choices(symbols, k=1000)
 
   noise_freq = params['noise_freq']
@@ -46,9 +52,26 @@ def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
                              noise_freq,
                              params['inference_freq'],
                              params['decision_entropy'],
-                             params['timeout_in_sec'])
+                             params['timeout_in_sec'],
+                             decoder_type=decoder_type)
 
-  assert True
+  pred_msgs, rts = np.vectorize(transmit)(true_msgs)
+
+  pred_msgs = ['time out' if x is None else x for x in pred_msgs]
+
+  n_classes = np.unique(pred_msgs).shape[0]
+  cm = confusion_matrix(true_msgs, pred_msgs)
+
+  assert cm.shape == (n_classes, n_classes)
+
+  accuracy = cm.trace() / cm.sum()
+  print('overall accuracy:', accuracy)
+
+  # plot
+  labels = np.unique(symbols + pred_msgs)
+  fig, ax = plt.subplots(1, 1)
+  ConfusionMatrixDisplay(cm, display_labels=labels).plot(ax=ax)
+
 
 def test_entropy_trace(symbols, plt: pyplot):
 
