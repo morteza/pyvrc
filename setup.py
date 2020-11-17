@@ -10,7 +10,7 @@ with open("README.md", "r") as f:
   LONG_DESCRIPTION = f.read()
 
 setup(name='pyvrc',
-      version='2020.11.1',
+      version='2020.11.2',
       description='',
       long_description=LONG_DESCRIPTION,
       long_description_content_type="text/markdown",
