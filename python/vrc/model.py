@@ -45,7 +45,7 @@ class BayesPoissonModel():
   # Additional parameters passed to Ax.
   # TODO use **kwargs instead
   ax_total_trials: int = 20
-  constraints = ['signal_freq + noise_freq <= 150']
+  constraints = ['signal_freq + noise_freq <= 100']
 
   def fit(self, response_times, stimuli):
     """Use the specified backend to fit a MLE model.
@@ -121,7 +121,7 @@ class BayesPoissonModel():
                noise_freq,
                inference_freq,
                decision_entropy,
-               return_correct_dist=False):
+               return_correct_dist=True):
     """Simulate multi-channel transmission and return transmission times.
 
     Args:
@@ -154,40 +154,40 @@ class BayesPoissonModel():
 
     # generate a random sequence of messages and record transmission times
     sim = pd.DataFrame({
-        'msgs_true': random.choices(self.symbols, k=self.simulations_count)
+        'true_response': random.choices(self.symbols, k=self.simulations_count)
     })
 
-    # sim['msgs_pred'], sim['rts_pred'] = (np.vectorize(transmit)(sim.msgs_true))
-    sim[['msgs_pred', 'rts_pred']] = sim.msgs_true.apply(transmit).apply(pd.Series)
+    sim[['pred_response', 'pred_rt']] = sim['true_response'].apply(transmit).apply(pd.Series)
 
     # check timeouts
-    n_timeouts = sim['msgs_pred'].isna().sum()
-    print('timed-outs:', n_timeouts)
+    n_timeouts = sim['pred_response'].isna().sum()
+    print('timeouts:', n_timeouts)
     if n_timeouts == self.simulations_count:
       return sim, None
 
     if return_correct_dist:
       # keep only correct transmissions
-      correct_sim = sim.query('msgs_true == msgs_pred')
+      correct_sim = sim.query('true_response == pred_response')
 
       try:
-        kde = stats.gaussian_kde(correct_sim.rts_pred)
-      except Exception:
+        kde = stats.gaussian_kde(correct_sim['pred_rt'])
+      except Exception as e:
+        print(e)
         kde = None
 
       return sim, kde
 
     # otherwise, when return_correct_dist=False, create dists for all response classes
 
-    # cm = confusion_matrix(sim.query('msgs_pred.notna()').msgs_true,
-    #                       sim.query('msgs_pred.notna()').msgs_pred,
+    # cm = confusion_matrix(sim.query('pred_response.notna()').true_response,
+    #                       sim.query('pred_response.notna()').pred_response,
     #                       labels=self.symbols)
     # print(cm)
 
     dists = {}
     for si in self.symbols:
       for sj in self.symbols:
-        rts = sim.query('(msgs_pred == @si) & (msgs_true == @sj)')['rts_pred'].values
+        rts = sim.query('(pred_response == @si) & (true_response == @sj)')['pred_rt'].values
 
         try:
           dists[(si, sj)] = stats.gaussian_kde(rts)
@@ -210,12 +210,14 @@ class BayesPoissonModel():
 
     """
 
-    sim, dist = self.simulate(**params, return_correct_dist=self.fit_only_correct_responses)
+    sim, dist = self.simulate(**params,
+                              return_correct_dist=self.fit_only_correct_responses)
 
     if isinstance(dist, dict):
+      # fit_only_correct_responses
       probs = []
-      msgs_pred = sim.msgs_pred.to_list()
-      for si, sj in zip(msgs_pred, stimuli):
+      pred_responses = sim['pred_response'].to_list()
+      for si, sj in zip(pred_responses, stimuli):
         logp = 0.0  # -np.inf
         if (si is not None) and (dist[(si, sj)] is not None):
           rts = np.array(response_times, dtype='float64')[np.array(stimuli) == si]

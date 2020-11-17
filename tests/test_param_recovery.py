@@ -34,7 +34,7 @@ def test_params_comparison(plt):
     corrects = (pred_msgs == sent_msgs)
     accuracy = int(corrects.mean() * 100)
     rts.append(pred_rts)
-    legends.append(f'S/N/H [Accuracy]={s}/{n}/{h} [{accuracy}%]')
+    legends.append(f'S/N/H={s}/{n}/{h} (%correct={accuracy:.1f})')
 
   _, ax = plt.subplots(1, 1)
   sns.set()
@@ -43,20 +43,19 @@ def test_params_comparison(plt):
   ax.legend(legends)
 
 
-def test_two_dists():
-  """simulate two distributions using same hyperparameters."""
-  pass
-
-
 def test_params_recovery(symbols, plt):
 
   # ground truth (TODO: read from test fixture)
   symbols = list('ABCD')
-  signal_freq = 20
-  noise_freq = 20
+  signal_freq = 40
+  noise_freq = 10
   decision_entropy = 0.5
   inference_freq = 100
   timeout_in_sec = 10
+
+  n_stimuli = 100
+  n_simulations = 100
+  n_ax_trials = 10
 
   # 1. generate/simulate response times using ground truth model parameters
 
@@ -67,49 +66,56 @@ def test_params_recovery(symbols, plt):
                              decision_entropy,
                              timeout_in_sec)
 
-  true_msgs = np.array(random.choices(symbols, k=100))
+  data = pd.DataFrame({
+      'stimulus': np.array(random.choices(symbols, k=n_stimuli))
+  })
 
-  vtransmit = np.vectorize(transmit)
-  simulated_msgs, true_rts = vtransmit(true_msgs)
-  corrects = (simulated_msgs == true_msgs)
-  valids = ~pd.isna(true_rts)
+  data[['response', 'rt']] = data['stimulus'].apply(transmit).apply(pd.Series)
 
-  print('Accuracy:',
-        corrects.mean(),
-        'in',
-        len(true_msgs),
-        'simulated trials')
+  true_accuracy = data.query('stimulus == response')['rt'].count() / len(data)
 
-  # 2. now fit a model to the generated RTs
+  valids = ~data['rt'].isna()
+
+  print(f'Ground truth: {true_accuracy*100:.2f}% correct in {len(data)} trials.')
+
+  # 2. now define and fit a model to the groupnd truth RTs
   model = vrc.BayesPoissonModel(symbols,
                                 timeout_in_sec,
                                 inference_freq=inference_freq,
                                 backend='ax',
-                                simulations_count=100,
-                                ax_total_trials=10)
+                                simulations_count=n_simulations,
+                                ax_total_trials=n_ax_trials)
 
-  fitted_params = model.fit(true_rts[valids], true_msgs[valids])
-  print('FITTED PARAMS:', fitted_params)
+  recovered_params = model.fit(data['rt'], data['stimulus'])
+  print('FITTED PARAMS:', recovered_params)
 
   # 3. next is to use fitted parameters and simulate again
   transmit = vrc.Transmitter(symbols,
-                             fitted_params['signal_freq'],
-                             fitted_params['noise_freq'],
+                             recovered_params['signal_freq'],
+                             recovered_params['noise_freq'],
                              inference_freq,
-                             fitted_params['decision_entropy'],
+                             recovered_params['decision_entropy'],
                              timeout_in_sec)
 
-  vtransmit = np.vectorize(transmit)
-  pred_msgs, pred_rts = vtransmit(true_msgs)
-  pred_corrects = (pred_msgs == true_msgs)
+  data[['recovered_response', 'recovered_rt']] = \
+      data['stimulus'].apply(transmit).apply(pd.Series)
 
-  legends = [f'Truth (accuracy: {corrects.mean() * 100:.2f}%)',
-             f'Recovered (accuracy: {pred_corrects.mean() * 100:.2f}%)']
+  recovered_accuracy = data.query('stimulus == recovered_response')['rt'].count() / len(data)
+
+  print('medians:', data['rt'].median(), data['recovered_rt'].median())
+
+  data = data.melt(value_vars=['rt', 'recovered_rt'], var_name='kind', value_name='rt')
 
   # plot ground truth RTs vs recovered RTs
   _, ax = plt.subplots(1, 1)
-  sns.histplot([true_rts, pred_rts], kde=True, label="RT (s)", element='step')
+  binwidth = 1. / inference_freq
+  sns.histplot(data,
+               x='rt', hue='kind',
+               binwidth=binwidth, kde=True, element='step', label="RT (s)")
   ax.set(xlabel='Response time (s)')
+
+  legends = [f'Truth (%correct={true_accuracy * 100:.1f}%)',
+             f'Recovered (%correct={recovered_accuracy * 100:.1f}%)']
   ax.legend(legends)
 
   plt.suptitle('Ground Truth v.s. Recovered distributions')
