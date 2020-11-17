@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import random
 import numpy as np
-from pandas.core.arrays.sparse import dtype
 from scipy import stats
 import pandas as pd
 from sklearn.metrics import confusion_matrix
@@ -39,7 +38,7 @@ class BayesPoissonModel():
   max_signal_freq = 100.0
   max_noise_freq = 100.0
   initial_entropy = 2.0  # TODO use a more intelligent bound for entrpy
-  fit_only_correct_responses = False  # set True to fit response classes separately
+  fit_all_responses: bool = False  # set True to fit response classes separately
   backend: 'vrc.OptimizerBackend' = 'ax'  # see 'vrc.enums' for available backends
 
   # Additional parameters passed to Ax.
@@ -64,7 +63,8 @@ class BayesPoissonModel():
     response_times = np.array(response_times)
 
     if self.backend == vrc.OptimizerBackend.AX.value:
-      return self.ax_fit(response_times, stimuli)
+      best_params, *_ = self.ax_fit(response_times, stimuli)
+      return best_params
 
     raise NotImplementedError(f'{self.backend} is not implemented yet.')
 
@@ -105,7 +105,7 @@ class BayesPoissonModel():
         'value': self.inference_freq
     }]
 
-    best_params, best_vals, expriment, model = ax.optimize(
+    best_params, best_vals, experiment, model = ax.optimize(
         parameters=ax_params,
         evaluation_function=(lambda params: self.nll_loss(params, response_times, stimuli)),
         minimize=True,
@@ -114,7 +114,7 @@ class BayesPoissonModel():
         total_trials=self.ax_total_trials
     )
 
-    return best_params
+    return best_params, best_vals, experiment, model
 
   def simulate(self,
                signal_freq,
@@ -211,25 +211,31 @@ class BayesPoissonModel():
     """
 
     sim, dist = self.simulate(**params,
-                              return_correct_dist=self.fit_only_correct_responses)
+                              return_correct_dist=self.fit_all_responses)
 
     if isinstance(dist, dict):
-      # fit_only_correct_responses
+      # fit_all_responses
       probs = []
       pred_responses = sim['pred_response'].to_list()
       for si, sj in zip(pred_responses, stimuli):
-        logp = 0.0  # -np.inf
+        logp = -np.inf
         if (si is not None) and (dist[(si, sj)] is not None):
           rts = np.array(response_times, dtype='float64')[np.array(stimuli) == si]
           logp = dist[(si, sj)].logpdf(rts)
         probs.append(np.nansum(logp))
     else:
       if dist is None:
-        return 0.0  # -inf
+        return -np.inf
       probs = np.vectorize(dist.logpdf)(response_times)
+
+    probs = np.where(np.isinf(probs), 0.0, probs)
 
     _nll = - np.sum(probs)
 
-    print('NLL Loss:', _nll)
+    print('nll_loss:', _nll)
+
+    # Ax cannot handle inifinities. Replace it with a max mvalue
+    if np.isinf(_nll):
+      _nll = np.finfo('float32').max
 
     return _nll

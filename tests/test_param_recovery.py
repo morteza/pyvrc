@@ -2,6 +2,9 @@ import random
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from ax.plot.contour import interact_contour
+from ax.plot.render import plot_config_to_html
+from ax.utils.report.render import render_report_elements
 
 import vrc
 
@@ -55,7 +58,7 @@ def test_params_recovery(symbols, plt):
 
   n_stimuli = 100
   n_simulations = 100
-  n_ax_trials = 10
+  n_ax_trials = 20
 
   # 1. generate/simulate response times using ground truth model parameters
 
@@ -82,11 +85,15 @@ def test_params_recovery(symbols, plt):
   model = vrc.BayesPoissonModel(symbols,
                                 timeout_in_sec,
                                 inference_freq=inference_freq,
+                                fit_all_responses=True,
                                 backend='ax',
                                 simulations_count=n_simulations,
                                 ax_total_trials=n_ax_trials)
 
-  recovered_params = model.fit(data['rt'], data['stimulus'])
+  # recovered_params = model.fit(data['rt'], data['stimulus'])
+  recovered_params, recovered_vals, ax_experiment, ax_model = \
+      model.ax_fit(data['rt'], data['stimulus'])
+
   print('FITTED PARAMS:', recovered_params)
 
   # 3. next is to use fitted parameters and simulate again
@@ -104,13 +111,13 @@ def test_params_recovery(symbols, plt):
 
   print('medians:', data['rt'].median(), data['recovered_rt'].median())
 
-  data = data.melt(value_vars=['rt', 'recovered_rt'], var_name='kind', value_name='rt')
+  data = data.melt(value_vars=['rt', 'recovered_rt'], var_name='kind', value_name='rt_value')
 
   # plot ground truth RTs vs recovered RTs
   _, ax = plt.subplots(1, 1)
   binwidth = 1. / inference_freq
   sns.histplot(data,
-               x='rt', hue='kind',
+               x='rt_value', hue='kind',
                binwidth=binwidth, kde=True, element='step', label="RT (s)")
   ax.set(xlabel='Response time (s)')
 
@@ -119,6 +126,16 @@ def test_params_recovery(symbols, plt):
   ax.legend(legends)
 
   plt.suptitle('Ground Truth v.s. Recovered distributions')
+
+  # plot ax diagnosis report
+  ax_plot_config = interact_contour(ax_model, 'nll_loss')
+
+  # TODO use pytest.request to define the output path
+  with open('outputs/test_reports/test_param_recovery--test_params_recovery.html', 'w') as f:
+      f.write(render_report_elements('param_recovery_report',
+              html_elements=[plot_config_to_html(ax_plot_config)],
+              header=True,
+              ))
 
   # 4. compare recovered parameters to the ground truth
   # assert np.isclose(accuracies.mean(), recovered_accuracies.mean())
