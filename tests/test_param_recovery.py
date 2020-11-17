@@ -1,19 +1,18 @@
 import random
-
 import numpy as np
+import pandas as pd
+import seaborn as sns
 
 import vrc
 
-import seaborn as sns
 
-
-def test_non_identifiable_params(plt):
+def test_params_comparison(plt):
 
   # ground truth (TODO: read from test fixture)
   symbols = list('ABCD')
-  signal_freqs = [19.196080653727883, 54.56850742921233]
-  noise_freqs = [16.61880410112117, 70.27448069564998]
-  decision_entropies = [1.5515815711871377, 1.1339395301416517]
+  signal_freqs = [19, 54]
+  noise_freqs = [16, 70]
+  decision_entropies = [1.0, 1.1]
   inference_freq = 100
   timeout_in_sec = 10
 
@@ -21,18 +20,27 @@ def test_non_identifiable_params(plt):
 
   sent_msgs = random.choices(symbols, k=1000)
 
-  for i in range(2):
+  rts = []
+  legends = []
+  for s, n, h in zip(signal_freqs, noise_freqs, decision_entropies):
     transmit = vrc.Transmitter(symbols,
-                               signal_freqs[i],
-                               noise_freqs[i],
+                               s,
+                               n,
                                inference_freq,
-                               decision_entropies[i],
+                               h,
                                timeout_in_sec)
     vtransmit = np.vectorize(transmit)
-    pred_msgs, rts = vtransmit(sent_msgs)
-    accuracies = (pred_msgs == sent_msgs)
-    sns.distplot(rts, axlabel="RT (s)")
-    print(np.nan_to_num(accuracies).mean())
+    pred_msgs, pred_rts = vtransmit(sent_msgs)
+    corrects = (pred_msgs == sent_msgs)
+    accuracy = int(corrects.mean() * 100)
+    rts.append(pred_rts)
+    legends.append(f'S/N/H [Accuracy]={s}/{n}/{h} [{accuracy}%]')
+
+  _, ax = plt.subplots(1, 1)
+  sns.set()
+  sns.histplot(rts, kde=True, label="RT (s)", element='step')
+  ax.set(xlabel='Response time (s)')
+  ax.legend(legends)
 
 
 def test_two_dists():
@@ -44,10 +52,10 @@ def test_params_recovery(symbols, plt):
 
   # ground truth (TODO: read from test fixture)
   symbols = list('ABCD')
-  signal_freq = 100.0
-  noise_freq = 10.0
-  decision_entropy = 0.4
-  inference_freq = 1000
+  signal_freq = 20
+  noise_freq = 20
+  decision_entropy = 0.5
+  inference_freq = 100
   timeout_in_sec = 10
 
   # 1. generate/simulate response times using ground truth model parameters
@@ -59,50 +67,55 @@ def test_params_recovery(symbols, plt):
                              decision_entropy,
                              timeout_in_sec)
 
-  sent_msgs = random.choices(symbols, k=100)
+  true_msgs = np.array(random.choices(symbols, k=100))
 
   vtransmit = np.vectorize(transmit)
-  pred_msgs, rts = vtransmit(sent_msgs)
-  accuracies = (pred_msgs == sent_msgs)
+  simulated_msgs, true_rts = vtransmit(true_msgs)
+  corrects = (simulated_msgs == true_msgs)
+  valids = ~pd.isna(true_rts)
 
   print('Accuracy:',
-        accuracies.mean(),
+        corrects.mean(),
         'in',
-        len(sent_msgs),
+        len(true_msgs),
         'simulated trials')
 
   # 2. now fit a model to the generated RTs
   model = vrc.BayesPoissonModel(symbols,
                                 timeout_in_sec,
-                                inference_freq=100,
+                                inference_freq=inference_freq,
                                 backend='ax',
-                                ax_total_trials=5)
+                                simulations_count=100,
+                                ax_total_trials=10)
 
-  best_params = model.fit(rts, sent_msgs)
-  print('BEST MODEL PARAMS :', best_params)
+  fitted_params = model.fit(true_rts[valids], true_msgs[valids])
+  print('FITTED PARAMS:', fitted_params)
 
+  # 3. next is to use fitted parameters and simulate again
   transmit = vrc.Transmitter(symbols,
-                             best_params['signal_freq'],
-                             best_params['noise_freq'],
+                             fitted_params['signal_freq'],
+                             fitted_params['noise_freq'],
                              inference_freq,
-                             best_params['decision_entropy'],
-                             timeout_in_sec,
-                             decoder_type='snr')
+                             fitted_params['decision_entropy'],
+                             timeout_in_sec)
 
   vtransmit = np.vectorize(transmit)
-  pred_msgs, recovered_rts = vtransmit(sent_msgs)
-  recovered_accuracies = (pred_msgs == sent_msgs)
+  pred_msgs, pred_rts = vtransmit(true_msgs)
+  pred_corrects = (pred_msgs == true_msgs)
+
+  legends = [f'Truth (accuracy: {corrects.mean() * 100:.2f}%)',
+             f'Recovered (accuracy: {pred_corrects.mean() * 100:.2f}%)']
 
   # plot ground truth RTs vs recovered RTs
-  sns.distplot(rts, axlabel='Ground Truth')
-  sns.distplot(recovered_rts, axlabel='Recovered')
-  plt.suptitle(f'Ground Truth Accuracy: {accuracies.mean()} \n'
-               f'Recovered Accuracy: {recovered_accuracies.mean()}')
+  _, ax = plt.subplots(1, 1)
+  sns.histplot([true_rts, pred_rts], kde=True, label="RT (s)", element='step')
+  ax.set(xlabel='Response time (s)')
+  ax.legend(legends)
 
-  # 3. compare recovered parameters to the ground truth
+  plt.suptitle('Ground Truth v.s. Recovered distributions')
+
+  # 4. compare recovered parameters to the ground truth
   # assert np.isclose(accuracies.mean(), recovered_accuracies.mean())
   # assert np.isclose(signal_freq, best_params['signal_freq'])
   # assert np.isclose(noise_freq, best_params['noise_freq'])
   # assert np.isclose(decision_entropy, best_params['decision_entropy'])
-
-  # TODO simulate new RTs and plot them against ground truth

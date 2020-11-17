@@ -4,7 +4,9 @@ from dataclasses import dataclass
 
 import random
 import numpy as np
+from pandas.core.arrays.sparse import dtype
 from scipy import stats
+import pandas as pd
 from sklearn.metrics import confusion_matrix
 import ax
 
@@ -34,8 +36,8 @@ class BayesPoissonModel():
   inference_freq: int = 100
   min_signal_freq = 1.0
   min_noise_freq = 0.1
-  max_signal_freq = 1000.0
-  max_noise_freq = 1000.0
+  max_signal_freq = 100.0
+  max_noise_freq = 100.0
   initial_entropy = 2.0  # TODO use a more intelligent bound for entrpy
   fit_only_correct_responses = False  # set True to fit response classes separately
   backend: 'vrc.OptimizerBackend' = 'ax'  # see 'vrc.enums' for available backends
@@ -43,7 +45,7 @@ class BayesPoissonModel():
   # Additional parameters passed to Ax.
   # TODO use **kwargs instead
   ax_total_trials: int = 20
-  constraints = ['signal_freq + noise_freq <= 1000']
+  constraints = ['signal_freq + noise_freq <= 150']
 
   def fit(self, response_times, stimuli):
     """Use the specified backend to fit a MLE model.
@@ -58,6 +60,9 @@ class BayesPoissonModel():
       defines the underlying optimization toolkit.
       Default is 'ax' which uses PyTorch Bayesian Optimizer.
     """
+
+    response_times = np.array(response_times)
+
     if self.backend == vrc.OptimizerBackend.AX.value:
       return self.ax_fit(response_times, stimuli)
 
@@ -148,41 +153,48 @@ class BayesPoissonModel():
                                decoder_type=vrc.DecoderType.SNR)
 
     # generate a random sequence of messages and record transmission times
-    msgs = random.choices(self.symbols, k=self.simulations_count)
-    pred_msgs, pred_rts = np.vectorize(transmit)(msgs)
+    sim = pd.DataFrame({
+        'msgs_true': random.choices(self.symbols, k=self.simulations_count)
+    })
 
-    pred_msgs = ['' if x is None else x for x in pred_msgs]
+    # sim['msgs_pred'], sim['rts_pred'] = (np.vectorize(transmit)(sim.msgs_true))
+    sim[['msgs_pred', 'rts_pred']] = sim.msgs_true.apply(transmit).apply(pd.Series)
+
+    # check timeouts
+    n_timeouts = sim['msgs_pred'].isna().sum()
+    print('timed-outs:', n_timeouts)
+    if n_timeouts == self.simulations_count:
+      return sim, None
 
     if return_correct_dist:
-      corrects = (pred_msgs == msgs)
-
-      print('accuracy = {}'.format(corrects.sum() / len(corrects)))
-      # TODO keep all transmissions and fit the full confusion matrix
-      # keep only valid transmissions
-      pred_rts = pred_rts[corrects]
+      # keep only correct transmissions
+      correct_sim = sim.query('msgs_true == msgs_pred')
 
       try:
-        return stats.gaussian_kde(pred_rts)
+        kde = stats.gaussian_kde(correct_sim.rts_pred)
       except Exception:
-        return None
+        kde = None
 
-    # return dists for all response classes
+      return sim, kde
 
-    n_timeouts = np.sum([1 if m is None else 0 for m in pred_msgs])
-    if n_timeouts == len(pred_msgs):
-      return None
+    # otherwise, when return_correct_dist=False, create dists for all response classes
 
-    # cm = confusion_matrix(msgs, pred_msgs, labels=self.symbols)
+    # cm = confusion_matrix(sim.query('msgs_pred.notna()').msgs_true,
+    #                       sim.query('msgs_pred.notna()').msgs_pred,
+    #                       labels=self.symbols)
+    # print(cm)
+
     dists = {}
-    for c in self.symbols:
-      class_rts = pred_rts[pred_msgs == c]
+    for si in self.symbols:
+      for sj in self.symbols:
+        rts = sim.query('(msgs_pred == @si) & (msgs_true == @sj)')['rts_pred'].values
 
-      try:
-        dists[c] = stats.gaussian_kde(class_rts)
-      except Exception:
-        dists[c] = None
+        try:
+          dists[(si, sj)] = stats.gaussian_kde(rts)
+        except Exception:
+          dists[(si, sj)] = None
 
-    return dists
+    return sim, dists
 
   def nll_loss(self, params, response_times, stimuli):
     """Negative Log-Likelihood loss function (to be minimized).
@@ -198,18 +210,24 @@ class BayesPoissonModel():
 
     """
 
-    if self.fit_only_correct_responses:
-      simulated_dist = self.simulate(**params, return_correct_dist=True)
-      if simulated_dist is None:
-        return -np.inf
-      logpdfs = np.vectorize(simulated_dist.logpdf)(response_times)
-    else:
-      simulated_dists = self.simulate(**params, return_correct_dist=False)
-      logpdfs = [-np.inf
-                 if simulated_dists[s] is None
-                 else simulated_dists[s].logpdf(response_times[stimuli == s])
-                 for s in stimuli]
+    sim, dist = self.simulate(**params, return_correct_dist=self.fit_only_correct_responses)
 
-    _nll = - np.sum(logpdfs)
+    if isinstance(dist, dict):
+      probs = []
+      msgs_pred = sim.msgs_pred.to_list()
+      for si, sj in zip(msgs_pred, stimuli):
+        logp = 0.0  # -np.inf
+        if (si is not None) and (dist[(si, sj)] is not None):
+          rts = np.array(response_times, dtype='float64')[np.array(stimuli) == si]
+          logp = dist[(si, sj)].logpdf(rts)
+        probs.append(np.nansum(logp))
+    else:
+      if dist is None:
+        return 0.0  # -inf
+      probs = np.vectorize(dist.logpdf)(response_times)
+
+    _nll = - np.sum(probs)
+
+    print('NLL Loss:', _nll)
 
     return _nll
