@@ -16,4 +16,4 @@ def test_ax_backend(symbols):
 
   # signal_freq, noise_freq, decision_entropy
   print(best_params)
-  assert len(best_params) == 
+  assert len(best_params) == 6
