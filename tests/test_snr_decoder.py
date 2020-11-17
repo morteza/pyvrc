@@ -7,7 +7,7 @@ import vrc
 
 
 @pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
-def test_noisy_decoding(symbols, message, params_fixture, plt, request):
+def test_noisy_decoding(symbols, stimulus, params_fixture, plt, request):
 
   params = request.getfixturevalue(params_fixture)
 
@@ -22,16 +22,16 @@ def test_noisy_decoding(symbols, message, params_fixture, plt, request):
   snr = signal_freq / noise_freq
 
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
-  spike_trains = encode(message, timeout_in_sec)
+  spike_trains = encode(stimulus, timeout_in_sec)
 
   decode = vrc.SNRDecoder(symbols, snr, noise_freq=noise_freq)
 
   posteriors = decode(spike_trains, timeout_in_sec)
 
-  # last posterior of the decoded message must be pretty strong
-  sent_msg_idx = symbols.index(message)
-  rcvd_msg_idx = np.argmax(posteriors[:, -1])
-  assert sent_msg_idx == rcvd_msg_idx
+  # strongest posterior identifies the response
+  stimulus_idx = symbols.index(stimulus)
+  response_idx = np.argmax(posteriors[:, -1])
+  assert stimulus_idx == response_idx
 
   fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -41,7 +41,7 @@ def test_noisy_decoding(symbols, message, params_fixture, plt, request):
   axes[0].set_ylabel('Posterior (p)')
 
   fig.tight_layout()
-  fig.suptitle(f'SNR Decoder (target = {sent_msg_idx})')
+  fig.suptitle(f'SNR Decoder (stimulus = {stimulus_idx})')
 
   # plot entropies
   entropies = - np.sum(posteriors * np.log2(posteriors), axis=0)
@@ -72,5 +72,5 @@ def test_snr_decoding_logic(plt):
   # plot posteriors
   sns.lineplot(data=entropies.T, marker='o')
   plt.xlabel('Time (timepoint)')
-  plt.ylabel('Entropy (bits)')
-  plt.suptitle('Entropy over time (target = 3)')
+  plt.ylabel('Remaining entropy (bits)')
+  plt.suptitle('Entropy over time (stimulus = 3)')

@@ -15,7 +15,7 @@ def test_uninformed_priors():
 
 def test_initial_prior_in_snr_decoder():
   symbols = list('ABCD')
-  message = symbols[1]
+  stimulus = symbols[1]
   signal_freq = 10
   noise_freq = 10
   timeout = 10  # seconds
@@ -25,7 +25,7 @@ def test_initial_prior_in_snr_decoder():
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
   decode = vrc.SNRDecoder(symbols, signal_freq, noise_freq)
 
-  spike_trains = encode(message, timeout)
+  spike_trains = encode(stimulus, timeout)
   # print([s[0] for s in spike_trains.values()])
   # initial_priors=None
   posteriors = decode(spike_trains, timeout)

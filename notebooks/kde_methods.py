@@ -2,7 +2,6 @@
 
 # %%
 
-from matplotlib.pyplot import xlabel
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -40,10 +39,10 @@ plt.xlabel('X')
 
 plt.show()
 
-# benchmarks
+# benchmarks (uncomment to run benchmarks)
 
-print('scipy kde benckmark:')
-%%timeit kd=stats.gaussian_kde(X.T, bw_method='scott'); kd.logpdf(X.T)
+# print('scipy kde benckmark:')
+# %%timeit kd = stats.gaussian_kde(X.T, bw_method='scott'); kd.logpdf(X.T)
 
-print('sklearn kde benckmark:')
-%%timeit kd=KernelDensity(kernel='gaussian', bandwidth=bw).fit(X); kd.score_samples(X)
+# print('sklearn kde benckmark:')
+# %%timeit kd = KernelDensity(kernel='gaussian', bandwidth=bw).fit(X); kd.score_samples(X)

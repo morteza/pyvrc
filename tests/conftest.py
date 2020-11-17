@@ -48,5 +48,5 @@ def symbols():
 
 
 @pytest.fixture
-def message():
+def stimulus():
   return 'B'

@@ -2,7 +2,7 @@ import pytest
 import vrc
 
 
-def test_noiseless_encoding(symbols, message, noiseless_params):
+def test_noiseless_encoding(symbols, stimulus, noiseless_params):
 
   signal_freq = noiseless_params['signal_freq']
   noise_freq = noiseless_params['noise_freq']
@@ -12,24 +12,24 @@ def test_noiseless_encoding(symbols, message, noiseless_params):
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
 
   # generate signal spikes
-  spike_trains = encode(message, timeout_in_sec)
+  spike_trains = encode(stimulus, timeout_in_sec)
 
   # 1. confirm number of channels: one channel per symbol.
   channels_count = len(spike_trains)
   assert channels_count == len(symbols)
 
-  # 2. message channel must contain spikes if signal_freq > zero.
-  assert len(spike_trains[message]) > 0
+  # 2. stimulus channel must contain spikes if signal_freq > zero.
+  assert len(spike_trains[stimulus]) > 0
 
-  # TODO: 3. test if len(spike_trains[message]) ~ signal_freq * timeout_in_sec
+  # TODO: 3. test if len(spike_trains[stimulus]) ~ signal_freq * timeout_in_sec
 
   # 4. noisy channels must be empty if noise_freq is zero.
-  spike_trains.pop(message)
+  spike_trains.pop(stimulus)
   assert all([len(s) == 0 for s in spike_trains.values()])
 
 
 @pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
-def test_spike_train_plotting(symbols, message, params_fixture, plt, request):
+def test_spike_train_plotting(symbols, stimulus, params_fixture, plt, request):
 
   params = request.getfixturevalue(params_fixture)
 
@@ -41,7 +41,7 @@ def test_spike_train_plotting(symbols, message, params_fixture, plt, request):
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
 
   # generate signal spikes
-  spike_trains = encode(message, timeout_in_sec)
+  spike_trains = encode(stimulus, timeout_in_sec)
 
   plt.eventplot(spike_trains.values(), color="green")
-  plt.suptitle('Spike train for the message symbol.', y=0)
+  plt.suptitle('Spike train for the stimulus', y=0)

@@ -10,7 +10,7 @@ class OneHotEncoder():
   """Produces one-hot configurations of mulltiple Poisson spike trains.
 
   Encoder produces multiple poisson processes which spike with respect to
-  expected frequencies. It encodes a message using Poisson rate coding and a
+  expected frequencies. It encodes a stimulus using Poisson rate coding and a
   grain of noise.
 
   Note that encoding happens on the sender's side. Currently it only support
@@ -23,7 +23,7 @@ class OneHotEncoder():
     symbols (list):
       list of all possible symbols.
     signal_freq (float):
-      firing rate of message channel (Hz).
+      firing rate of stimulus channel (Hz).
     noise_freq(float):
       firing rate of noise channels (Hz).
     homogeneous (boolean, optional):
@@ -52,13 +52,13 @@ class OneHotEncoder():
     # validate parameters
     assert self.symbols is not None, "Invalid symbols list"
 
-  def __call__(self, message: list, duration_in_sec: float) -> dict:
-    """Encode a message and return spike trains (one train per channel).
+  def __call__(self, stimulus, duration_in_sec: float) -> dict:
+    """Encode a stimulus and return spike trains (one train per channel).
 
     Args:
     -----
-      message (str or list):
-        Message(s) to be encoded. Must be of size 1 for One-Hot encoding.
+      stimulus (str or list):
+        Stimuli to be encoded. Must be of size 1 for One-Hot encoding.
         The list format is not supported.
       duration_in_sec (float):
         total duration of spike trains in seconds, which results in producing
@@ -97,16 +97,16 @@ class OneHotEncoder():
 
       # one-hot configuration (one signal channel + the rest are noise channels)
       freq = self.noise_freq
-      if s in message:
+      if s == stimulus:
         freq += self.signal_freq
 
       if self.homogeneous:
         # simulate homogeneous poisson process
-        spikes_cnt = stats.poisson(freq).rvs(1)
+        spikes_cnt = stats.poisson(freq).rvs(1).astype(float)
         spikes_cnt *= duration_in_sec
         spikes = stats.uniform.rvs(loc=0,
                                    scale=duration_in_sec,
-                                   size=spikes_cnt)
+                                   size=spikes_cnt.astype(int))
         spikes = np.sort(spikes)
       else:
         # generate random inter-spike intervals and convert them to spike train

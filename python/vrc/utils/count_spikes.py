@@ -23,7 +23,7 @@ def count_spikes(spike_trains: list,
 
   channels_cnt = len(spike_trains)
 
-  spike_counts = np.zeros((channels_cnt, duration * counting_freq + 1))
+  spike_counts = np.zeros((channels_cnt, int(duration * counting_freq + 1)))
 
   for i, spike_train in enumerate(spike_trains):
     for spike in spike_train:

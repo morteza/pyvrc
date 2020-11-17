@@ -8,8 +8,9 @@ import seaborn as sns
 
 import vrc
 
+
 @pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
-def test_decoding(symbols, message, params_fixture, plt, request):
+def test_decoding(symbols, stimulus, params_fixture, plt, request):
 
   params = request.getfixturevalue(params_fixture)
 
@@ -17,15 +18,15 @@ def test_decoding(symbols, message, params_fixture, plt, request):
   timeout_in_sec = params['timeout_in_sec']
 
   encode = vrc.OneHotEncoder(symbols, signal_freq=signal_freq, noise_freq=0)
-  spike_trains = encode(message, timeout_in_sec)
+  spike_trains = encode(stimulus, timeout_in_sec)
 
   decode = vrc.OneHotDecoder(symbols, signal_freq=signal_freq, noise_freq=0)
   posteriors = decode(spike_trains, timeout_in_sec)
 
-  # last posterior of the decoded message must be pretty strong
-  sent_msg_idx = symbols.index(message)
-  rcvd_msg_idx = np.argmax(posteriors[:, -1])
-  assert sent_msg_idx == rcvd_msg_idx
+  # last posterior of the decoded stimulus must be pretty strong
+  stimulus_idx = symbols.index(stimulus)
+  response_idx = np.argmax(posteriors[:, -1])
+  assert stimulus_idx == response_idx
 
   fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -35,7 +36,7 @@ def test_decoding(symbols, message, params_fixture, plt, request):
   axes[0].set_ylabel('Posterior (p)')
 
   fig.tight_layout()
-  fig.suptitle(f'Singal+Noise Decoder (target = {sent_msg_idx})')
+  fig.suptitle(f'OneHot Decoder (stimulus = {stimulus_idx})')
 
   # plot entropies
   entropies = - np.sum(posteriors * np.log2(posteriors), axis=0)
@@ -76,14 +77,14 @@ def test_decoding_logic(plt):
 
   assert np.all(priors > 0)
 
-  # message (index=2) must have the highest probebility in the last inference
+  # stimulus (index=2) must have the highest probebility during the last inference
   assert np.max(priors[:, -1]) == priors[2, -1]
 
   # plot posteriors
   sns.lineplot(data=priors.T, marker='o')
   plt.xlabel('Time (timepoint)')
   plt.ylabel('Posterior (p)')
-  plt.suptitle('Posteriors over time (target_index = 2)')
+  plt.suptitle('Posteriors over time (stimulus = 2)')
 
 
 def test_scipy_poisson():

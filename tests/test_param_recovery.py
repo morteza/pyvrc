@@ -9,56 +9,19 @@ from ax.utils.report.render import render_report_elements
 import vrc
 
 
-def test_params_comparison(plt):
+def test_params_recovery(plt):
 
   # ground truth (TODO: read from test fixture)
   symbols = list('ABCD')
-  signal_freqs = [19, 54]
-  noise_freqs = [16, 70]
-  decision_entropies = [1.0, 1.1]
+  signal_freq = 20.0
+  noise_freq = 10.0
+  decision_entropy = .2
   inference_freq = 100
-  timeout_in_sec = 10
-
-  # 1. generate/simulate response times using ground truth model parameters
-
-  sent_msgs = random.choices(symbols, k=1000)
-
-  rts = []
-  legends = []
-  for s, n, h in zip(signal_freqs, noise_freqs, decision_entropies):
-    transmit = vrc.Transmitter(symbols,
-                               s,
-                               n,
-                               inference_freq,
-                               h,
-                               timeout_in_sec)
-    vtransmit = np.vectorize(transmit)
-    pred_msgs, pred_rts = vtransmit(sent_msgs)
-    corrects = (pred_msgs == sent_msgs)
-    accuracy = int(corrects.mean() * 100)
-    rts.append(pred_rts)
-    legends.append(f'S/N/H={s}/{n}/{h} (%correct={accuracy:.1f})')
-
-  _, ax = plt.subplots(1, 1)
-  sns.set()
-  sns.histplot(rts, kde=True, label="RT (s)", element='step')
-  ax.set(xlabel='Response time (s)')
-  ax.legend(legends)
-
-
-def test_params_recovery(symbols, plt):
-
-  # ground truth (TODO: read from test fixture)
-  symbols = list('ABCD')
-  signal_freq = 40
-  noise_freq = 10
-  decision_entropy = 0.5
-  inference_freq = 100
-  timeout_in_sec = 10
+  timeout = 10.0  # in sec
 
   n_stimuli = 100
-  n_simulations = 100
-  n_ax_trials = 20
+
+  store_ax_report = True
 
   # 1. generate/simulate response times using ground truth model parameters
 
@@ -67,7 +30,7 @@ def test_params_recovery(symbols, plt):
                              noise_freq,
                              inference_freq,
                              decision_entropy,
-                             timeout_in_sec)
+                             timeout)
 
   data = pd.DataFrame({
       'stimulus': np.array(random.choices(symbols, k=n_stimuli))
@@ -77,68 +40,60 @@ def test_params_recovery(symbols, plt):
 
   true_accuracy = data.query('stimulus == response')['rt'].count() / len(data)
 
-  valids = ~data['rt'].isna()
+  # 2. now fit a model to the groupnd truth RTs
 
-  print(f'Ground truth: {true_accuracy*100:.2f}% correct in {len(data)} trials.')
-
-  # 2. now define and fit a model to the groupnd truth RTs
   model = vrc.BayesPoissonModel(symbols,
-                                timeout_in_sec,
-                                inference_freq=inference_freq,
-                                fit_all_responses=True,
-                                backend='ax',
-                                simulations_count=n_simulations,
-                                ax_total_trials=n_ax_trials)
+                                timeout,
+                                backend='ax')
 
-  # recovered_params = model.fit(data['rt'], data['stimulus'])
   recovered_params, recovered_vals, ax_experiment, ax_model = \
-      model.ax_fit(data['rt'], data['stimulus'])
+      model.ax_fit(data['rt'], data['response'])
 
-  print('FITTED PARAMS:', recovered_params)
+  print('Recovered Parameters:', recovered_params)
 
   # 3. next is to use fitted parameters and simulate again
   transmit = vrc.Transmitter(symbols,
                              recovered_params['signal_freq'],
-                             recovered_params['noise_freq'],
-                             inference_freq,
-                             recovered_params['decision_entropy'],
-                             timeout_in_sec)
+                             recovered_params['snr'] / recovered_params['signal_freq'],
+                             recovered_params['inference_freq'],
+                             recovered_params['decision_threshold'],
+                             recovered_params['timeout_in_sec'])
 
   data[['recovered_response', 'recovered_rt']] = \
       data['stimulus'].apply(transmit).apply(pd.Series)
 
-  recovered_accuracy = data.query('stimulus == recovered_response')['rt'].count() / len(data)
+  recovered_accuracy = \
+      data.query('stimulus == recovered_response')['recovered_rt'].count() / len(data)
 
-  print('medians:', data['rt'].median(), data['recovered_rt'].median())
+  print('medians (true, recovered):',
+        data['rt'].median(), data['recovered_rt'].median())
 
-  data = data.melt(value_vars=['rt', 'recovered_rt'], var_name='kind', value_name='rt_value')
+  # TODO use pytest to define the output path
+  data.to_csv('outputs/test_reports/test_param_recovery-simulations.csv')
 
-  # plot ground truth RTs vs recovered RTs
+  data = data.melt(value_vars=['rt', 'recovered_rt'],
+                   var_name='kind',
+                   value_name='rt_value')
+
+  # 4. finally plot ground truth RTs vs recovered RTs
   _, ax = plt.subplots(1, 1)
   binwidth = 1. / inference_freq
   sns.histplot(data,
                x='rt_value', hue='kind',
-               binwidth=binwidth, kde=True, element='step', label="RT (s)")
-  ax.set(xlabel='Response time (s)')
+               binwidth=binwidth, kde=True, label="RT (s)")
 
-  legends = [f'Truth (%correct={true_accuracy * 100:.1f}%)',
-             f'Recovered (%correct={recovered_accuracy * 100:.1f}%)']
-  ax.legend(legends)
+  ax.set(xlabel=('Response time (s)\n'
+                 f'Recovered: {recovered_accuracy * 100:.1f} %correct\n'
+                 f'Truth: {true_accuracy * 100:.1f} %correct'))
 
-  plt.suptitle('Ground Truth v.s. Recovered distributions')
+  plt.suptitle('Truth v.s. Recovered distributions')
 
-  # plot ax diagnosis report
-  ax_plot_config = interact_contour(ax_model, 'nll_loss')
+  if store_ax_report:
+    # plot ax diagnosis report
+    ax_plot_config = interact_contour(ax_model, 'nll_loss')
 
-  # TODO use pytest.request to define the output path
-  with open('outputs/test_reports/test_param_recovery--test_params_recovery.html', 'w') as f:
-      f.write(render_report_elements('param_recovery_report',
-              html_elements=[plot_config_to_html(ax_plot_config)],
-              header=True,
-              ))
-
-  # 4. compare recovered parameters to the ground truth
-  # assert np.isclose(accuracies.mean(), recovered_accuracies.mean())
-  # assert np.isclose(signal_freq, best_params['signal_freq'])
-  # assert np.isclose(noise_freq, best_params['noise_freq'])
-  # assert np.isclose(decision_entropy, best_params['decision_entropy'])
+    # TODO use pytest to define the output path
+    with open('outputs/test_reports/test_param_recovery-optimization_report.html', 'w') as f:
+        f.write(render_report_elements('param_recovery_report',
+                html_elements=[plot_config_to_html(ax_plot_config)],
+                header=False, offline=True))

@@ -1,4 +1,3 @@
-# %%
 import pytest
 
 import random
@@ -13,7 +12,7 @@ import vrc
 
 
 @pytest.mark.parametrize('params_fixture', ['noisy_params'])
-def test_noisy_transmission(symbols, message, params_fixture, request):
+def test_noisy_transmission(symbols, stimulus, params_fixture, request):
 
   params = request.getfixturevalue(params_fixture)
 
@@ -24,10 +23,10 @@ def test_noisy_transmission(symbols, message, params_fixture, request):
                              params['decision_entropy'],
                              params['timeout_in_sec'])
 
-  pred_message, _ = transmit(message)
+  response, _ = transmit(stimulus)
 
-  # for reasonable signal/noise freqs, the message must be successfully passed.
-  assert pred_message is message
+  # for reasonable signal/noise freqs, the stimulus must be successfully passed.
+  assert response is stimulus
 
 
 @pytest.mark.parametrize('params_fixture', ['noisy_params', 'noiseless_params'])
@@ -39,7 +38,7 @@ def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
                   if params_fixture == 'noiseless_params'
                   else vrc.DecoderType.SNR)
 
-  true_msgs = random.choices(symbols, k=1000)
+  stimuli = random.choices(symbols, k=1000)
 
   noise_freq = params['noise_freq']
 
@@ -55,12 +54,12 @@ def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
                              params['timeout_in_sec'],
                              decoder_type=decoder_type)
 
-  pred_msgs, rts = np.vectorize(transmit)(true_msgs)
+  responses, response_times = np.vectorize(transmit)(stimuli)
 
-  pred_msgs = ['' if x is None else x for x in pred_msgs]
+  responses = ['' if x is None else x for x in responses]
 
-  n_classes = np.unique(pred_msgs).shape[0]
-  cm = confusion_matrix(true_msgs, pred_msgs)
+  n_classes = np.unique(responses).shape[0]
+  cm = confusion_matrix(stimuli, responses)
 
   assert cm.shape == (n_classes, n_classes)
 
@@ -68,8 +67,9 @@ def test_confusion_matrix(symbols, params_fixture, plt: pyplot, request):
   print('overall accuracy:', accuracy)
 
   # plot
-  labels = np.unique(symbols + pred_msgs)
-  fig, ax = plt.subplots(1, 1)
+  labels = np.unique(symbols + responses)
+  _, ax = plt.subplots(1, 1)
+  sns.set_style("white")
   ConfusionMatrixDisplay(cm, display_labels=labels).plot(ax=ax)
 
 
@@ -84,9 +84,9 @@ def test_entropy_trace(symbols, plt: pyplot):
   encode = vrc.OneHotEncoder(symbols, signal_freq, noise_freq)
   decode = vrc.SNRDecoder(symbols, signal_freq, noise_freq, inference_freq)
 
-  message = random.choice(symbols)
+  stimulus = random.choice(symbols)
 
-  spike_trains = encode(message, timeout_in_sec)
+  spike_trains = encode(stimulus, timeout_in_sec)
   posteriors = decode(spike_trains, timeout_in_sec)
   entropies = - np.sum(posteriors * np.log2(posteriors), axis=0)
 
